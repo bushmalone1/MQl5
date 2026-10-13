@@ -1,0 +1,96 @@
+//+------------------------------------------------------------------+
+//|                                              V50SniperEA.mq5     |
+//+------------------------------------------------------------------+
+#property strict
+
+#include <Trade/Trade.mqh>
+
+CTrade trade;
+
+input double LotSize = 0.01;
+input int StopLoss = 150;
+input int TakeProfit = 300;
+
+int fastEMAHandle;
+int slowEMAHandle;
+int rsiHandle;
+
+int OnInit()
+{
+   fastEMAHandle = iMA(_Symbol, PERIOD_CURRENT, 20, 0, MODE_EMA, PRICE_CLOSE);
+   slowEMAHandle = iMA(_Symbol, PERIOD_CURRENT, 50, 0, MODE_EMA, PRICE_CLOSE);
+   rsiHandle     = iRSI(_Symbol, PERIOD_CURRENT, 14, PRICE_CLOSE);
+
+   return(INIT_SUCCEEDED);
+}
+
+void OnDeinit(const int reason)
+{
+   IndicatorRelease(fastEMAHandle);
+   IndicatorRelease(slowEMAHandle);
+   IndicatorRelease(rsiHandle);
+}
+
+void OnTick()
+{
+   if(PositionsTotal() == 0) // Hakikisha hakuna order iliyo wazi
+   {
+      if(BuySignal())
+      {
+         double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+         trade.Buy(LotSize, _Symbol, ask, ask - StopLoss * _Point, ask + TakeProfit * _Point);
+      }
+      else if(SellSignal())
+      {
+         double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+         trade.Sell(LotSize, _Symbol, bid, bid + StopLoss * _Point, bid - TakeProfit * _Point);
+      }
+   }
+}
+
+bool BuySignal()
+{
+   double fastEMA[2];
+   double slowEMA[2];
+   double rsi[2];
+
+   ArraySetAsSeries(fastEMA, true);
+   ArraySetAsSeries(slowEMA, true);
+   ArraySetAsSeries(rsi, true);
+
+   if(CopyBuffer(fastEMAHandle, 0, 0, 2, fastEMA) < 2) return false;
+   if(CopyBuffer(slowEMAHandle, 0, 0, 2, slowEMA) < 2) return false;
+   if(CopyBuffer(rsiHandle, 0, 0, 2, rsi) < 2) return false;
+
+   double closePrice = iClose(_Symbol, PERIOD_CURRENT, 1);
+
+   // Tunakagua Mshumaa uliopita [1] badala ya unaoendelea [0]
+   bool emaCondition   = fastEMA[1] > slowEMA[1];
+   bool rsiCondition   = rsi[1] > 55;
+   bool candleCondition = closePrice > fastEMA[1];
+
+   return (emaCondition && rsiCondition && candleCondition);
+}
+
+bool SellSignal()
+{
+   double fastEMA[2];
+   double slowEMA[2];
+   double rsi[2];
+
+   ArraySetAsSeries(fastEMA, true);
+   ArraySetAsSeries(slowEMA, true);
+   ArraySetAsSeries(rsi, true);
+
+   if(CopyBuffer(fastEMAHandle, 0, 0, 2, fastEMA) < 2) return false;
+   if(CopyBuffer(slowEMAHandle, 0, 0, 2, slowEMA) < 2) return false;
+   if(CopyBuffer(rsiHandle, 0, 0, 2, rsi) < 2) return false;
+
+   double closePrice = iClose(_Symbol, PERIOD_CURRENT, 1);
+
+   // Tunakagua Mshumaa uliopita [1] badala ya unaoendelea [0]
+   bool emaCondition   = fastEMA[1] < slowEMA[1];
+   bool rsiCondition   = rsi[1] < 45;
+   bool candleCondition = closePrice < fastEMA[1];
+
+   return (emaCondition && rsiCondition && candleCondition
