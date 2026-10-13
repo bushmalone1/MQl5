@@ -1,0 +1,23 @@
+name: Compile MQL5
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Compile MQL5
+        uses: fxcode/mql-compile-action@v1
+        with:
+          init-path: 'My bots'
+
+      - name: Upload compiled EX5
+        uses: actions/upload-artifact@v3
+        with:
+          name: compiled-ea
+          path: '*.ex5'
